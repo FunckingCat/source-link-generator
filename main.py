@@ -1,9 +1,12 @@
-from time import sleep
-
+import grequests
 import requests
 from lxml import etree
 import argparse
 from datetime import date
+
+
+def exception_handler(request, exception):
+    print("\033[31mRequest failed \033[0m with status ", request.status_code, request.url)
 
 
 def format_response(url: str, title: str):
@@ -21,14 +24,20 @@ def get_title(html):
     return 'Нет заголовка на странице'
 
 
-def parse_link(url: str):
-    headers = {'Content-Type': 'text/html'}
-    response = requests.get(url, headers=headers)
-    html = etree.HTML(response.text)
-    return format_response(url, get_title(html))
+def parse_links(urls_list):
+    rs = (grequests.get(u) for u in urls_list)
+    result = []
+    for r in grequests.map(rs, size=16, exception_handler=exception_handler):
+        if not r:
+            exception_handler(r, '')
+            result.append(format_response(r.url, r.url.split('//')[1].split('/')[0].capitalize()))
+            continue
+        html = etree.HTML(r.text)
+        result.append(format_response(r.url, get_title(html)))
+    return result
 
 
-parser = argparse.ArgumentParser(description='A tutorial of argparse!')
+parser = argparse.ArgumentParser(description='application fot generation source links')
 group = parser.add_mutually_exclusive_group(required=True)
 
 group.add_argument("--inter", type=bool, help="turns on interactive mode, type 'inter True' to start it")
@@ -40,18 +49,16 @@ inter = args.inter
 url = args.url
 file = args.file
 
-print('Inter: ', inter)
-print('Link: ', url)
-print('File: ', file)
-
+res = []
 if inter:
     while True:
         url = input('url сайта (https://habr.com/...)')
-        print(parse_link(url))
+        print(parse_links([url])[0])
 if url:
-    print(parse_link(url))
+    res = parse_links([url])
 if file:
     with open(file, 'r') as f:
-        for line in f:
-            print(parse_link(line))
-
+        urls = [row.strip() for row in f]
+        res = parse_links(urls)
+for line in res:
+    print(line)
