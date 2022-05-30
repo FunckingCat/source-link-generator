@@ -1,17 +1,23 @@
 import grequests
-import requests
 from lxml import etree
 import argparse
-from datetime import date
+import datetime
+import validators
+import random
 
 
 def exception_handler(request, exception):
     print("\033[31mRequest failed \033[0m with status ", request.status_code, request.url)
 
 
+def not_valid_handler(url):
+    print("\033[31mURL not valid \033[0m", url)
+
+
 def format_response(url: str, title: str):
+    application_date = (datetime.datetime.today() - datetime.timedelta(random.randint(0, span))).strftime('%d.%m.%Y')
     return '{} [Электронный ресурс]. – URL: {} (дата обращения: {}).' \
-        .format(title, url, date.today().strftime('%d.%m.%Y'))
+        .format(title, url, application_date)
 
 
 def get_title(html):
@@ -37,28 +43,46 @@ def parse_links(urls_list):
     return result
 
 
-parser = argparse.ArgumentParser(description='application fot generation source links')
+def valid_filter(url):
+    if not validators.url(url):
+        not_valid_handler(url)
+    return validators.url(url)
+
+
+parser = argparse.ArgumentParser(description='application for generation source links')
 group = parser.add_mutually_exclusive_group(required=True)
 
-group.add_argument("--inter", type=bool, help="turns on interactive mode, type 'inter True' to start it")
-group.add_argument("--url", type=str, help="site url to parse, ignored if file specified")
-group.add_argument("--file", type=str, help="source file with links, one per line")
+group.add_argument("-i", "--inter", action='store_true', help="turns on interactive mode")
+group.add_argument("-u", "--url", type=str, help="site url to parse, ignored if file specified")
+group.add_argument("-f", "--file", type=str, help="source file with links, one per line")
+
+parser.add_argument("-s", "--span", type=int, default=0, help="time-span to flash-back date of the application")
 
 args = parser.parse_args()
 inter = args.inter
 url = args.url
 file = args.file
+span = args.span
 
 res = []
 if inter:
     while True:
-        url = input('url сайта (https://habr.com/...)')
+        url = input('url сайта (https://habr.com/...): ')
+        if not validators.url(url):
+            not_valid_handler(url)
+            continue
         print(parse_links([url])[0])
 if url:
-    res = parse_links([url])
+    if not validators.url(url):
+        not_valid_handler(url)
+    else:
+        res = parse_links([url])
 if file:
     with open(file, 'r') as f:
         urls = [row.strip() for row in f]
+        urls = filter(valid_filter, urls)
         res = parse_links(urls)
+
+print("\033[32mResult: \033[0m")
 for line in res:
     print(line)
