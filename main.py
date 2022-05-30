@@ -4,6 +4,9 @@ import argparse
 import datetime
 import validators
 import random
+from banner import banner
+
+print(banner)
 
 
 def exception_handler(request, exception):
@@ -63,6 +66,8 @@ inter = args.inter
 url = args.url
 file = args.file
 span = args.span
+if span < 0:
+    span *= -1
 
 res = []
 if inter:
