@@ -24,6 +24,8 @@ def format_response(url: str, title: str):
 
 
 def get_title(html):
+    if not html:
+        return 'None'
     title = html.xpath('//h1//text()')
     if title and title[0]:
         return title[0]
